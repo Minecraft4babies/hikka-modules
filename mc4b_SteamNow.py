@@ -80,8 +80,7 @@ class Mc4bSteamNowMod(loader.Module):
 
     async def autobio(self) -> None:
         while True:
-            last_bio = await self.client(
-                telethon.tl.functions.account.GetFullUsserRequest(client.get_me()))
+            last_bio = (await self.client(telethon.tl.functions.users.GetFullUserRequest(await self.client.get_me()))).full_user.about
             url = (
                 "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
                 f"?key={self.config['SteamAPI']}&steamids={self.config['SteamID']}"
