@@ -79,8 +79,9 @@ class Mc4bSteamNowMod(loader.Module):
         )
 
     async def autobio(self) -> None:
-        last_bio = self.config["NoActivityBio"] or ""
         while True:
+            last_bio = await self.client(
+                telethon.tl.functions.account.GetFullUsserRequest(client.get_me()))
             url = (
                 "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
                 f"?key={self.config['SteamAPI']}&steamids={self.config['SteamID']}"
@@ -99,7 +100,7 @@ class Mc4bSteamNowMod(loader.Module):
                 else:
                     bio = self.config["NoActivityBio"] or ""
                     delay = 60
-    
+                
                 if bio != last_bio:
                     await self.client(
                         telethon.tl.functions.account.UpdateProfileRequest(
