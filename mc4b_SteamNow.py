@@ -79,6 +79,7 @@ class Mc4bSteamNowMod(loader.Module):
         )
 
     async def autobio(self) -> None:
+        last_bio = self.config["NoActivityBio"] or ""
         while True:
             url = (
                 "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
