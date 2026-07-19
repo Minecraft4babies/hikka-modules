@@ -1,11 +1,10 @@
-"""
-    ____  __  __ _                            __ _   _  _   _           _     _
-   / __ \|  \/  (_)_ __   ___  ___ _ __ __ _ / _| |_| || | | |__   __ _| |__ (_) ___  ___
-  / / _` | |\/| | | '_ \ / _ \/ __| '__/ _` | |_| __| || |_| '_ \ / _` | '_ \| |/ _ \/ __|
- | | (_| | |  | | | | | |  __/ (__| | | (_| |  _| |_|__   _| |_) | (_| | |_) | |  __/\__ \
-  \ \__,_|_|  |_|_|_| |_|\___|\___|_|  \__,_|_|  \__|  |_| |_.__/ \__,_|_.__/|_|\___||___/
-   \____/
-"""
+#    ____  __  __ _                            __ _   _  _   _           _     _
+#   / __ \|  \/  (_)_ __   ___  ___ _ __ __ _ / _| |_| || | | |__   __ _| |__ (_) ___  ___
+#  / / _` | |\/| | | '_ \ / _ \/ __| '__/ _` | |_| __| || |_| '_ \ / _` | '_ \| |/ _ \/ __|
+# | | (_| | |  | | | | | |  __/ (__| | | (_| |  _| |_|__   _| |_) | (_| | |_) | |  __/\__ \
+#  \ \__,_|_|  |_|_|_| |_|\___|\___|_|  \__,_|_|  \__|  |_| |_.__/ \__,_|_.__/|_|\___||___/
+#   \____/
+
 import requests
 import json
 import logging
@@ -14,16 +13,16 @@ import asyncio
 from .. import loader, utils
 
 def register(cb):
-    cb(mc4b_steamnowMod())
+    cb(Mc4bSteamNowMod())
 
 @loader.tds
 class Mc4bSteamNowMod(loader.Module):
     """Module for showing you Steam activity in bio."""
     strings = {
         "name": "SteamNow",
-        "autobio": "<b>SteamNow autobio {}!</b>",
-        "autobio_on": "",
-        "autobio_off": "",
+        "autobio": "<b>SteamNow autobio turned {}!</b>",
+        "autobio_on": "on",
+        "autobio_off": "off",
         "config_required": "<b>Type <code>.config</code> and set your SteamAPI with SteamID and <code>.restart</code>!</b>",
         "_cmd_doc_steambio":"""Toggle bio Steam activity streaming
 
@@ -59,7 +58,7 @@ class Mc4bSteamNowMod(loader.Module):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "NoActivityBio",
-                None,
+                "",
                 "Bio when there is no activity."
             ),
             loader.ConfigValue(
@@ -81,17 +80,38 @@ class Mc4bSteamNowMod(loader.Module):
 
     async def autobio(self) -> None:
         while True:
-            url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.config['SteamAPI']}&steamids={self.config['SteamID']}"
-            request = requests.get(url)
-            request_dict = json.loads(request.text)
+            url = (
+                "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
+                f"?key={self.config['SteamAPI']}&steamids={self.config['SteamID']}"
+            )
+    
             try:
-                playing_game = request_dict['response']['players'][0]['gameextrainfo']
-                bio = self.config['AutoBioTemplate'].format(playing_game)
-                await asyncio.sleep(20)
-            except KeyError:
-                bio = self.config["NoActivityBio"]
-                await asyncio.sleep(60)
-            await self.client(telethon.tl.functions.account.UpdateProfileRequest(about=bio[:70]))
+                request = requests.get(url)
+                request_dict = json.loads(request.text)
+    
+                player = request_dict["response"]["players"][0]
+                playing_game = player.get("gameextrainfo")
+    
+                if playing_game:
+                    bio = self.config["AutoBioTemplate"].format(playing_game)
+                    delay = 20
+                else:
+                    bio = self.config["NoActivityBio"] or ""
+                    delay = 60
+    
+                if bio != last_bio:
+                    await self.client(
+                        telethon.tl.functions.account.UpdateProfileRequest(
+                            about=bio[:70]
+                        )
+                    )
+                    last_bio = bio
+    
+            except Exception as e:
+                logging.exception("SteamNow autobio error: %s", e)
+                delay = 60
+    
+            await asyncio.sleep(delay)
 
     def stop(self) -> None:
         if not self.bio_task:
